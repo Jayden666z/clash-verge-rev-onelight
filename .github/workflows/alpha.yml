@@ -3,8 +3,8 @@ name: Alpha Build
 on:
   workflow_dispatch:
   schedule:
-    # UTC+8 00:00 (UTC 16:00 previous day) and UTC+8 12:00 (UTC 04:00)
-    - cron: "0 16,4 * * *"
+    # UTC+8 0,6,12,18
+    - cron: "0 16,22,4,10 * * *"
 permissions: write-all
 env:
   CARGO_INCREMENTAL: 0
@@ -117,7 +117,8 @@ jobs:
           # Check if UPDATELOG.md exists
           if [ -f "UPDATELOG.md" ]; then
             # Extract the section starting with ## and containing -alpha until the next ## or end of file
-            ALPHA_LOGS=$(awk '/^## .*-alpha/{flag=1; print; next} /^## /{flag=0} flag' UPDATELOG.md)
+            # ALPHA_LOGS=$(awk '/^## .*-alpha/{flag=1; print; next} /^## /{flag=0} flag' UPDATELOG.md)
+            ALPHA_LOGS=$(awk '/^## v/{if(flag) exit; flag=1} flag' UPDATELOG.md)
 
             if [ -n "$ALPHA_LOGS" ]; then
               echo "Found alpha update logs"
@@ -229,7 +230,7 @@ jobs:
         if: matrix.os == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libxslt1.1 libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
       - name: Install Node
         uses: actions/setup-node@v4
@@ -245,6 +246,9 @@ jobs:
         run: |
           pnpm i
           pnpm check ${{ matrix.target }}
+
+      - name: Release Alpha Version
+        run: pnpm release-alpha-version
 
       - name: Tauri build
         uses: tauri-apps/tauri-action@v0
@@ -312,6 +316,9 @@ jobs:
           pnpm i
           pnpm check ${{ matrix.target }}
 
+      - name: Release Alpha Version
+        run: pnpm release-alpha-version
+
       - name: "Setup for linux"
         run: |-
           sudo ls -lR /etc/apt/
@@ -335,6 +342,7 @@ jobs:
           sudo apt update
 
           sudo apt install -y \
+            libxslt1.1:${{ matrix.arch }} \
             libwebkit2gtk-4.1-dev:${{ matrix.arch }} \
             libayatana-appindicator3-dev:${{ matrix.arch }} \
             libssl-dev:${{ matrix.arch }} \
@@ -430,6 +438,9 @@ jobs:
         run: |
           pnpm i
           pnpm check ${{ matrix.target }}
+
+      - name: Release Alpha Version
+        run: pnpm release-alpha-version
 
       - name: Download WebView2 Runtime
         run: |

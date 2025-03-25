@@ -5,7 +5,7 @@ use tauri::{Listener, Manager};
 use crate::{
     config::Config,
     core::{handle, timer::Timer},
-    log_err,
+    log_err, AppHandleManager,
 };
 
 const LIGHT_WEIGHT_TASK_UID: &str = "light_weight_task";
@@ -25,18 +25,19 @@ pub fn disable_auto_light_weight_mode() {
 }
 
 pub fn entry_lightweight_mode() {
-    println!("尝试进入轻量模式。motherfucker");
     if let Some(window) = handle::Handle::global().get_window() {
-        log_err!(window.close());
-    }
-
-    if let Some(window) = handle::Handle::global().get_window() {
-        if let Some(webview) = window.get_webview_window("main") {
-            log_err!(webview.destroy());
-            println!("[lightweight_mode] 轻量模式已开启");
-            log::info!(target: "app", "[lightweight_mode] 轻量模式已开启");
+        if window.is_visible().unwrap_or(false) {
+            let _ = window.hide();
         }
+        if let Some(webview) = window.get_webview_window("main") {
+            let _ = webview.destroy();
+        }
+        #[cfg(target_os = "macos")]
+        AppHandleManager::global().set_activation_policy_accessory();
+        println!("[lightweight_mode] 轻量模式已开启");
+        log::info!(target: "app", "[lightweight_mode] 轻量模式已开启");
     }
+    let _ = cancel_light_weight_timer();
 }
 
 fn setup_window_close_listener() -> u32 {
@@ -132,10 +133,9 @@ fn cancel_light_weight_timer() -> Result<()> {
         delay_timer
             .remove_task(task.task_id)
             .context("failed to remove light weight timer task")?;
+        println!("[lightweight_mode] 轻量模式计时器已取消");
+        log::info!(target: "app", "[lightweight_mode] 轻量模式计时器已取消");
     }
-
-    println!("[lightweight_mode] 轻量模式计时器已取消");
-    log::info!(target: "app", "[lightweight_mode] 轻量模式计时器已取消");
 
     Ok(())
 }
